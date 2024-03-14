@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/kawabatas/toy-wasm-runtime/vm"
@@ -8,7 +9,7 @@ import (
 )
 
 func main() {
-	data, err := os.ReadFile("./testdata/helloworld.wasm")
+	data, err := os.ReadFile("./testdata/add.wasm")
 	if err != nil {
 		panic(err)
 	}
@@ -23,7 +24,10 @@ func main() {
 		panic(vm)
 	}
 
-	if _, err := vm.InvokeFunction("_start"); err != nil {
+	addParams := []uint64{40, 2}
+	result, err := vm.InvokeFunction("add", addParams...)
+	if err != nil {
 		panic(err)
 	}
+	fmt.Println(result) // 42
 }

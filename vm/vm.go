@@ -98,19 +98,19 @@ func (vm *VM) initFunctions() error {
 	return nil
 }
 
-func (vm *VM) InvokeFunction(name string, args ...uint64) error {
+func (vm *VM) InvokeFunction(name string, args ...uint64) (uint64, error) {
 	funcs := vm.Store.Functions
 	exp, ok := vm.Store.ModuleInstance.Exports[name]
 	if !ok {
-		return fmt.Errorf("export func %s is not found", name)
+		return 0, fmt.Errorf("export func %s is not found", name)
 	}
 
 	if exp.Type != wasm.ExternTypeFunc {
-		return fmt.Errorf("export func %s is not func type", name)
+		return 0, fmt.Errorf("export func %s is not func type", name)
 	}
 
 	if int(exp.Index) >= len(funcs) {
-		return fmt.Errorf("export func index out of range")
+		return 0, fmt.Errorf("export func index out of range")
 	}
 
 	for _, arg := range args {
@@ -120,7 +120,11 @@ func (vm *VM) InvokeFunction(name string, args ...uint64) error {
 	f := funcs[exp.Index]
 	f.Call(vm)
 
-	return nil
+	var ret uint64
+	if f.HasResult() {
+		ret = vm.stack.Pop()
+	}
+	return ret, nil
 }
 
 func (vm *VM) FetchInt32() int32 {
