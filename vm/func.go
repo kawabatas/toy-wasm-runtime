@@ -21,6 +21,13 @@ type (
 		FunctionType            *wasm.FunctionType
 		BodyOffsetInCodeSection uint64
 		Body                    []byte
+		Blocks                  map[uint64]*WasmFunctionBlock
+	}
+
+	WasmFunctionBlock struct {
+		StartAt, ElseAt, EndAt uint64
+		BlockType              *wasm.FunctionType
+		BlockTypeBytes         uint64
 	}
 )
 

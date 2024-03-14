@@ -33,3 +33,32 @@ func (s *Stack) Push(val uint64) {
 	s.stack[s.sp+1] = val
 	s.sp++
 }
+
+type LabelStack struct {
+	Stack []*Label
+	SP    int
+}
+
+type Label struct {
+	Arity          int
+	ContinuationPC uint64
+	EndPC          uint64
+}
+
+func NewLabelStack() *LabelStack {
+	return &LabelStack{
+		Stack: make([]*Label, stackSize),
+		SP:    -1,
+	}
+}
+
+func (s *LabelStack) Pop() *Label {
+	ret := s.Stack[s.SP]
+	s.SP--
+	return ret
+}
+
+func (s *LabelStack) Push(val *Label) {
+	s.Stack[s.SP+1] = val
+	s.SP++
+}

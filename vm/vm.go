@@ -86,11 +86,17 @@ func (vm *VM) initFunctions() error {
 	}
 
 	for i, fidx := range m.FunctionSection {
-		funcs[funcsIndex] = &WasmFunction{
+		f := &WasmFunction{
 			FunctionType:            &m.TypeSection[fidx],
 			Body:                    m.CodeSection[i].Body,
 			BodyOffsetInCodeSection: m.CodeSection[i].BodyOffsetInCodeSection,
 		}
+		blocks, err := vm.parseBlocks(f.Body)
+		if err != nil {
+			return fmt.Errorf("parse blocks: %w", err)
+		}
+		f.Blocks = blocks
+		funcs[funcsIndex] = f
 		funcsIndex++
 	}
 
@@ -145,4 +151,78 @@ func (vm *VM) FetchUint32() uint32 {
 	}
 	vm.activeFrame.PC += num - 1 // 1-1=0
 	return ret
+}
+
+type BlockType = wasm.FunctionType
+
+func (vm *VM) parseBlocks(body []byte) (map[uint64]*WasmFunctionBlock, error) {
+	ret := map[uint64]*WasmFunctionBlock{}
+	stack := make([]*WasmFunctionBlock, 0)
+
+	for pc := uint64(0); pc < uint64(len(body)); pc++ {
+		rawOc := body[pc]
+
+		switch wasm.Opcode(rawOc) {
+		case wasm.OpcodeCall:
+			pc++
+			_, num, err := wasm.DecodeUint32(bytes.NewBuffer(body[pc:]))
+			if err != nil {
+				return nil, fmt.Errorf("read immediate: %w", err)
+			}
+			pc += num - 1
+			continue
+		case wasm.OpcodeI32Const:
+			pc++
+			_, num, err := wasm.DecodeInt32(bytes.NewBuffer(body[pc:]))
+			if err != nil {
+				return nil, fmt.Errorf("read immediate: %w", err)
+			}
+			pc += num - 1
+			continue
+		case wasm.OpcodeIf:
+			var bt BlockType
+			r := bytes.NewBuffer(body[pc+1:])
+			raw, num, err := wasm.DecodeInt33AsInt64(r)
+			if err != nil {
+				return nil, fmt.Errorf("decode int33: %w", err)
+			}
+			switch raw {
+			case -64: // 0x40 in original byte = nil
+				bt = BlockType{}
+			case -1: // 0x7f in original byte = i32
+				bt = BlockType{Results: []wasm.ValueType{wasm.ValueTypeI32}}
+			default:
+				m := vm.Store.ModuleInstance
+				if raw < 0 || (raw >= int64(len(m.TypeSection))) {
+					return nil, fmt.Errorf("invalid block type: %d", raw)
+				}
+				bt = m.TypeSection[raw]
+			}
+
+			stack = append(stack, &WasmFunctionBlock{
+				StartAt:        pc,
+				BlockType:      &bt,
+				BlockTypeBytes: num,
+			})
+			pc += num
+		case wasm.OpcodeElse:
+			stack[len(stack)-1].ElseAt = pc
+		case wasm.OpcodeEnd:
+			if int(pc) == len(body)-1 { // ignore last
+				continue
+			}
+			bl := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			bl.EndAt = pc
+			ret[bl.StartAt] = bl
+		default:
+			continue
+		}
+	}
+
+	if len(stack) > 0 {
+		return nil, fmt.Errorf("ill-nested block exists")
+	}
+
+	return ret, nil
 }
