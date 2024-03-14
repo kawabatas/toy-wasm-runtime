@@ -86,11 +86,17 @@ func (vm *VM) initFunctions() error {
 	}
 
 	for i, fidx := range m.FunctionSection {
-		funcs[funcsIndex] = &WasmFunction{
+		f := &WasmFunction{
 			FunctionType:            &m.TypeSection[fidx],
 			Body:                    m.CodeSection[i].Body,
 			BodyOffsetInCodeSection: m.CodeSection[i].BodyOffsetInCodeSection,
 		}
+		blocks, err := vm.parseBlocks(f.Body)
+		if err != nil {
+			return fmt.Errorf("parse blocks: %w", err)
+		}
+		f.Blocks = blocks
+		funcs[funcsIndex] = f
 		funcsIndex++
 	}
 
@@ -145,4 +151,11 @@ func (vm *VM) FetchUint32() uint32 {
 	}
 	vm.activeFrame.PC += num - 1 // 1-1=0
 	return ret
+}
+
+type BlockType = wasm.FunctionType
+
+func (vm *VM) parseBlocks(body []byte) (map[uint64]*WasmFunctionBlock, error) {
+	// TODO
+	return nil, nil
 }
