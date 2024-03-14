@@ -7,6 +7,10 @@ import (
 type (
 	Function interface {
 		Call(vm *VM)
+		// In the current version of WebAssembly,
+		// the length of the result type vector of a valid function type may be at most 1.
+		// This restriction may be removed in future versions.
+		HasResult() bool
 	}
 
 	HostFunction struct {
@@ -25,6 +29,10 @@ var (
 	_ Function = (*WasmFunction)(nil)
 )
 
+func (f *HostFunction) HasResult() bool {
+	return false
+}
+
 func (f *HostFunction) Call(vm *VM) {
 	// only support $fd_write (param i32 i32 i32 i32) (result i32)
 	in := make([]int32, 4)
@@ -34,6 +42,10 @@ func (f *HostFunction) Call(vm *VM) {
 	}
 
 	f.FdWrite.Call(in[0], in[1], in[2], in[3])
+}
+
+func (f *WasmFunction) HasResult() bool {
+	return len(f.FunctionType.Results) > 0
 }
 
 func (f *WasmFunction) Call(vm *VM) {

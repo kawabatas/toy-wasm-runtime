@@ -13,9 +13,11 @@ const (
 	OpcodeReturn      Opcode = 0x0f
 	OpcodeCall        Opcode = 0x10
 	OpcodeDrop        Opcode = 0x1a
+	OpcodeLocalGet    Opcode = 0x20
 	OpcodeI32Load     Opcode = 0x28
 	OpcodeI32Store    Opcode = 0x36
 	OpcodeI32Const    Opcode = 0x41
+	OpcodeI32Add      Opcode = 0x6a
 )
 
 // See https://www.w3.org/TR/2019/REC-wasm-core-1-20191205/#binary-expr
